@@ -39,6 +39,25 @@ bisley_all %>% mutate(across(c(k, no3_n, mg, ca, nh4_n), ~ as.numeric(as.charact
  str_replace_all(",", "") |> str_trim() |> na_if("") |> as.numeric()))
 ```
 
+```{r}
+#Moving Average
+
+#Data is now clean, we need to now create a groupby only of our cleaned nutrients that were interested in
+nutrients <- bisley_all %>% 
+  group_by(sample_id) %>%
+  mutate(across(
+    c(k, no3_n, mg, ca, nh4_n),
+    #introducing the rollmean function that will section our years into 9 sections for the means
+    
+    #want to further investigate this
+    
+#Creating the rolling Mean
+    
+    ~ rollmean(., k = 9, fill = NA, align = "right"),
+    .names = "{.col}_rollmean9"
+  )) %>%
+  ungroup()
+```
 
 
 
