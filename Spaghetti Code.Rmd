@@ -1,0 +1,44 @@
+---
+title: "Spaghetti Code"
+author: "Joshua Ferrer-Lozano"
+date: "2025-08-26"
+output: html_document
+---
+```{r}
+
+library(janitor)
+library(tidyr)
+library(tidyverse)
+library(paletteer)
+library(dplyr)
+library(zoo)
+```
+
+```{r}
+# import data sets 
+
+read.csv(here('read','"QuebradaCuenca1-Bisley.csv'))
+read.csv(here('read','"QuebradaCuenca2-Bisley.csv'))
+read.csv(here('read','"QuebradaCuenca3-Bisley.csv'))
+
+bisley_all <- bind_rows(bisley_1,bisley_2,bisley_3)
+
+```
+
+```{r}
+bisley_all <- bisley_all %>% mutate(sample_date = as.Date(sample_date)) %>% arrange(sample_id, sample_date)
+```
+
+```{r}
+# Create a function where it includes a function where it will compute rolling means based on the column name or nutrient name
+bisley_all %>% mutate(across(c(k, no3_n, mg, ca, nh4_n), ~ as.numeric(as.character(.))))
+
+```
+```{r}
+ bisley_all <- bisley_all %>% mutate(across(c(k, no3_n, mg, ca, nh4_n), ~ .x |>as.character() |>
+ str_replace_all(",", "") |> str_trim() |> na_if("") |> as.numeric()))
+```
+
+
+
+
