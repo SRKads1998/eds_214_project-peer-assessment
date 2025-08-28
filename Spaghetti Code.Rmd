@@ -40,5 +40,15 @@ bisley_all %>% mutate(across(c(k, no3_n, mg, ca, nh4_n), ~ as.numeric(as.charact
 ```
 
 
+```{r}
+#Finding rolling average for ca
+nutrients$sample_date <- as.Date(nutrients$sample_date)
+
+ca_ma_once <- moving_average(focal_date = as.Date("1986-05-20"),
+                             Sample_Date = nutrients$sample_date,
+                             conc = nutrients$ca,
+                             wind_size_weeks = 9)
+```
+
 
 

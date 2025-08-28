@@ -63,6 +63,7 @@ bisley_all <- bisley_all %>%
   mutate(across(c(k, no3_n, mg, ca, nh4_n),
                 ~ as.numeric(as.character(.))))
 ```
+
 ```{r}
 #there are some issues in the previous code line. Saying that there are NAs included. We must ensure all entries are numeric, so we need to replace:
 # characters to numeric, any special symbols must be removed, commas, spaces, empties to NAs
@@ -82,6 +83,24 @@ bisley_all <- bisley_all %>%
   ))
 ```
 
+```{r}
+nutrients <- bisley_all %>% 
+  group_by(sample_id) %>%
+  mutate(across(
+    c(k, no3_n, mg, ca, nh4_n)))
+```
+
+```{r}
+#selecting the nutrients we want
+
+nutrients <- nutrients %>% 
+  select(sample_id,sample_date,k, no3_n,mg, ca, nh4_n)
+```
+```{r}
+nutrients
+```
+
+
 # Functions and Mathematical Output
 
 
@@ -90,46 +109,80 @@ bisley_all <- bisley_all %>%
 
 moving_average <- function(focal_date, Sample_Date, conc, wind_size_weeks) {
   #Which dates are in the window
-  is_in_window <- (dates > focal_date - (wind_size_weeks / 2) * 7) &
-    (dates < focal_date + (wind_size_weeks / 2) * 7)
+  is_in_window <- (Sample_Date > focal_date - (wind_size_weeks / 2) * 7) &
+    (Sample_Date < focal_date + (wind_size_weeks / 2) * 7)
   #find the associated concentrations
-  window_conc <- conc[wind_size_weeks]
+  window_conc <- conc[is_in_window]
   #calculate the mean
-  result <- mean(window_conc)
+  result <- mean(window_conc, na.rm = TRUE)
   
   return(result)
 }
 ```
+```{r}
+data.class(nutrients$sample_date)
+```
+
+
+```{r}
+nutrients$calc_rolling <- sapply(
+  nutrients$sample_date,
+  moving_average,
+  Sample_Date = nutrients$sample_date,
+  conc = nutrients$ca,
+  wind_size_weeks = 9
+)
+```
+
+# Create a for loop to iterate through the nutrients we want to get the rolling averages
+
+
+```{r}
+nutrient_names <- c("ca","k","mg","no3_n", "nh4_n")
+
+for (nutr in nutrient_names) {
+  new_col <- paste0(nutr, "_rollmean9")
+  nutrients[[new_col]] <- sapply(
+    nutrients$sample_date,
+    moving_average,
+    Sample_Date = nutrients$sample_date,
+    conc = nutrients[[nutr]],
+    wind_size_weeks = 9
+  )
+}
+
+
+```
+
 
 ```{r}
 
 #Data is now clean, we need to now create a groupby only of our cleaned nutrients that were interested in
-nutrients <- bisley_all %>% 
-  group_by(sample_id) %>%
-  mutate(across(
-    c(k, no3_n, mg, ca, nh4_n),
+#nutrients <- bisley_all %>% 
+#  group_by(sample_id) %>%
+#  mutate(across(
+#    c(k, no3_n, mg, ca, nh4_n)))
+    #,
     #introducing the rollmean function that will section our years into 9 sections for the means
-    
-    #want to further investigate this
     
 #Creating the rolling Mean
     
-    ~ rollmean(., k = 9, fill = NA, align = "right"),
-    .names = "{.col}_rollmean9"
-  )) %>%
-  ungroup()
+#    ~ rollmean(., k = 9, fill = NA, align = "right"),
+#    .names = "{.col}_rollmean9"
+#  )) %>%
+#  ungroup()
 ```
 
 ```{r}
-bisley_all %>% 
+#bisley_all %>% 
   #wanted to verify that there were sums in our nutrient columns
-  summarise(across(c(k, no3_n, mg, ca, nh4_n),
-                   ~ sum(!is.na(.)), .names = "n_nonNA_{.col}"))
+#  summarise(across(c(k, no3_n, mg, ca, nh4_n),
+#                   ~ sum(!is.na(.)), .names = "n_nonNA_{.col}"))
 ```
 
 
 ```{r}
-bisley_long <- nutrients %>% 
+nutrients_long <- nutrients %>% 
   select(sample_id, 
         sample_date,
         k_rollmean9,
@@ -161,13 +214,30 @@ bisley_long <- nutrients %>%
 #%>% 
   #filter(year >= 1988, year <= 1994, !is.na(value))
 ```
+```{r}
+nutrients_long <- nutrients_long %>%
+  dplyr::filter(lubridate::year(sample_date) >= "1986-05-20",
+                lubridate::year(sample_date)<= "1994-12-31")
+```
+```{r}
+nutrients_long
+```
+
+```{r}
+#validate if there are NAs
+table(nutrients_long$sample_id, is.na(nutrients_long$value))
+```
+```{r}
+unique(nutrients_long$sample_id)
+
+```
 
 
 ```{r}
 #declare what date was the day of the hurricane to create a vertical dotted line for the graph
 hurricane_date <- as.Date("1989-09-18")
 
-ggplot(bisley_long, aes(x = sample_date, y = value, color = sample_id)) +
+ggplot(nutrients_long, aes(x = sample_date, y = value, color = sample_id, group =  sample_id)) +
   geom_line(linewidth = .6) +
   geom_vline(
     xintercept = as.numeric(hurricane_date),
@@ -185,7 +255,6 @@ ggplot(bisley_long, aes(x = sample_date, y = value, color = sample_id)) +
   ) + 
   theme_bw() +
   
-  
   theme(
     strip.placement = "outside",
     strip.text.y.left = element_text(angle = 0), strip.background = element_rect(fill = "grey"),
@@ -193,10 +262,10 @@ ggplot(bisley_long, aes(x = sample_date, y = value, color = sample_id)) +
     legend.justification = c("left","top"),
     panel.grid.minor = element_blank()
   ) +
-  
-  
-  labs(
-    color = "Stream"
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y",
+    expand = c(0,0)
   )
 ```
 
