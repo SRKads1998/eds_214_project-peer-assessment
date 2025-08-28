@@ -1,0 +1,277 @@
+---
+title: "EDS_214_Project_Analysis"
+format: html
+editor: visual
+---
+
+---
+title: "eds214_bisley"
+format: html
+editor: visual
+---
+
+#Importing Libraries
+```{r}
+#importing anticipated libraries that may be needed for the analysis and replication
+
+#for cleaning names
+library(janitor)
+#for data manipulation
+
+#for data manipulation
+library(tidyverse)
+library(paletteer)
+library(dplyr)
+library(lubridate)
+#for the rolling mean function
+library(zoo)
+```
+
+#Importing the Datasets
+```{r}
+#Need to import the data from 3 separate csv files
+
+bisley_1 <- read.csv(here::here("data", 'QuebradaCuenca1-Bisley.csv'), na = c("-99999", "")) |> janitor::clean_names()
+bisley_2 <- read.csv(here::here("data","QuebradaCuenca2-Bisley.csv"), na = c("-99999", "")) |> janitor::clean_names()
+bisley_3 <- read.csv(here::here("data","QuebradaCuenca3-Bisley.csv"), na = c("-99999", "")) |> janitor::clean_names()
+
+```
+
+```{r}
+#verified the data before working on it
+colnames(bisley_1)
+colnames(bisley_2)
+colnames(bisley_3)
+```
+
+# Cleaning the Data
+```{r}
+#binded the rows to create one database
+bisley_all <- bind_rows(bisley_1,bisley_2,bisley_3) %>% 
+  #mutated the date column to date type. Before it was char
+  mutate(sample_date = 
+           as.Date(sample_date)) %>% 
+  arrange(sample_id, sample_date)
+```
+
+```{r}
+#verify the sample_date format
+#We see that the data for some of the columns are string type. Will need  change this
+str(bisley_all)
+```
+
+```{r}
+#Further cleaning
+
+#maybe attach this to the code chunk below
+bisley_all <- bisley_all %>%
+  #mutated the columns of the nutrients we want for our data set from character to numeric
+  mutate(across(c(k, no3_n, mg, ca, nh4_n),
+                ~ as.numeric(as.character(.))))
+```
+
+```{r}
+#there are some issues in the previous code line. Saying that there are NAs included. We must ensure all entries are numeric, so we need to replace:
+# characters to numeric, any special symbols must be removed, commas, spaces, empties to NAs
+
+#Maybe make this a function
+bisley_all <- bisley_all %>%
+  mutate(across(
+    c(k, no3_n, mg, ca, nh4_n),
+    ~ .x |>
+      as.character() |>                         # ensure character
+      str_replace_all(",", "") |>
+      #removed commas in numbers
+      str_trim() |>                             #remove stray spaces
+      na_if("") |>                        
+      as.numeric()
+      #turn empty string into NA
+  ))
+```
+
+```{r}
+nutrients <- bisley_all %>% 
+  group_by(sample_id) %>%
+  mutate(across(
+    c(k, no3_n, mg, ca, nh4_n)))
+```
+
+```{r}
+#selecting the nutrients we want
+
+nutrients <- nutrients %>% 
+  select(sample_id,sample_date,k, no3_n,mg, ca, nh4_n)
+```
+```{r}
+nutrients
+```
+
+
+# Functions and Mathematical Output
+
+
+```{r}
+#Recreating the rolling average 
+
+moving_average <- function(focal_date, Sample_Date, conc, wind_size_weeks) {
+  #Which dates are in the window
+  is_in_window <- (Sample_Date > focal_date - (wind_size_weeks / 2) * 7) &
+    (Sample_Date < focal_date + (wind_size_weeks / 2) * 7)
+  #find the associated concentrations
+  window_conc <- conc[is_in_window]
+  #calculate the mean
+  result <- mean(window_conc, na.rm = TRUE)
+  
+  return(result)
+}
+```
+```{r}
+data.class(nutrients$sample_date)
+```
+
+
+```{r}
+nutrients$calc_rolling <- sapply(
+  nutrients$sample_date,
+  moving_average,
+  Sample_Date = nutrients$sample_date,
+  conc = nutrients$ca,
+  wind_size_weeks = 9
+)
+```
+
+# Create a for loop to iterate through the nutrients we want to get the rolling averages
+
+
+```{r}
+nutrient_names <- c("ca","k","mg","no3_n", "nh4_n")
+
+for (nutr in nutrient_names) {
+  new_col <- paste0(nutr, "_rollmean9")
+  nutrients[[new_col]] <- sapply(
+    nutrients$sample_date,
+    moving_average,
+    Sample_Date = nutrients$sample_date,
+    conc = nutrients[[nutr]],
+    wind_size_weeks = 9
+  )
+}
+
+
+```
+
+
+```{r}
+
+#Data is now clean, we need to now create a groupby only of our cleaned nutrients that were interested in
+#nutrients <- bisley_all %>% 
+#  group_by(sample_id) %>%
+#  mutate(across(
+#    c(k, no3_n, mg, ca, nh4_n)))
+    #,
+    #introducing the rollmean function that will section our years into 9 sections for the means
+    
+#Creating the rolling Mean
+    
+#    ~ rollmean(., k = 9, fill = NA, align = "right"),
+#    .names = "{.col}_rollmean9"
+#  )) %>%
+#  ungroup()
+```
+
+```{r}
+#bisley_all %>% 
+  #wanted to verify that there were sums in our nutrient columns
+#  summarise(across(c(k, no3_n, mg, ca, nh4_n),
+#                   ~ sum(!is.na(.)), .names = "n_nonNA_{.col}"))
+```
+
+
+```{r}
+nutrients_long <- nutrients %>% 
+  select(sample_id, 
+        sample_date,
+        k_rollmean9,
+        no3_n_rollmean9,
+        mg_rollmean9,
+        ca_rollmean9,
+        nh4_n_rollmean9) %>% 
+      
+  pivot_longer(
+        cols = -c(sample_id,sample_date),
+        names_to = "nutrient",
+        values_to = "value"
+      ) %>% 
+  
+  #changes the recorded values in the nutrient column to the text given
+  mutate(
+    nutrient = recode(nutrient,
+      k_rollmean9 = "K mg I^-1",
+      no3_n_rollmean9 = "NO3-N ug I^-1",
+      mg_rollmean9 = "Mg mg I-1",
+      ca_rollmean9 = "Ca mg I^-1",
+      nh4_n_rollmean9 = "NH4-N ug I^-1"
+  ), 
+  
+  value = as.numeric(value)
+  ) %>% 
+  #is not na
+  filter(!is.na(value)) 
+#%>% 
+  #filter(year >= 1988, year <= 1994, !is.na(value))
+```
+```{r}
+nutrients_long <- nutrients_long %>%
+  dplyr::filter(lubridate::year(sample_date) >= "1986-05-20",
+                lubridate::year(sample_date)<= "1994-12-31")
+```
+```{r}
+nutrients_long
+```
+
+```{r}
+#validate if there are NAs
+table(nutrients_long$sample_id, is.na(nutrients_long$value))
+```
+```{r}
+unique(nutrients_long$sample_id)
+
+```
+
+
+```{r}
+#declare what date was the day of the hurricane to create a vertical dotted line for the graph
+hurricane_date <- as.Date("1989-09-18")
+
+ggplot(nutrients_long, aes(x = sample_date, y = value, color = sample_id, group =  sample_id)) +
+  geom_line(linewidth = .6) +
+  geom_vline(
+    xintercept = as.numeric(hurricane_date),
+    linetype = "dashed",
+    color = "black"
+  ) +
+  
+  
+  facet_wrap(~ nutrient, scales = "free_y", ncol = 1, strip.position = "left") + #this move the nutrients to the left
+  labs(title = "Bisley Nutrient Concentrations by 9-week Moving Averages",
+       subtitle = "Dashed line = Hurricane Hugo Disruption",
+       x = "Date",
+       y = "Concentration (mg/L",
+       color = "Stream"
+  ) + 
+  theme_bw() +
+  
+  theme(
+    strip.placement = "outside",
+    strip.text.y.left = element_text(angle = 0), strip.background = element_rect(fill = "grey"),
+    legend.position.inside = c(0.05, .95),
+    legend.justification = c("left","top"),
+    panel.grid.minor = element_blank()
+  ) +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y",
+    expand = c(0,0)
+  )
+```
+
