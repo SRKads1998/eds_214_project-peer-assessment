@@ -18,16 +18,22 @@ library(zoo)
 ```{r}
 # import data sets 
 
-read.csv(here('read','"QuebradaCuenca1-Bisley.csv'))
-read.csv(here('read','"QuebradaCuenca2-Bisley.csv'))
-read.csv(here('read','"QuebradaCuenca3-Bisley.csv'))
+data_1 <- read.csv(here('data','QuebradaCuenca1-Bisley.csv'))
+data_2 <- read.csv(here('data','QuebradaCuenca2-Bisley.csv'))
+data_3 <-read.csv(here('data','QuebradaCuenca3-Bisley.csv'))
 
-bisley_all <- bind_rows(bisley_1,bisley_2,bisley_3)
+bisley_all <- bind_rows(data_1,data_2,data_3)
 
 ```
 
 ```{r}
-bisley_all <- bisley_all %>% mutate(sample_date = as.Date(sample_date)) %>% arrange(sample_id, sample_date)
+bisley_all <- bisley_all %>% mutate(Sample_Date = as.Date(Sample_Date)) %>% arrange(Sample_ID, Sample_Date)
+```
+```{r}
+bisley_all <- tolower(colnames(bisley_all))
+```
+```{r}
+bisley_all
 ```
 
 ```{r}
@@ -38,6 +44,16 @@ bisley_all %>% mutate(across(c(k, no3_n, mg, ca, nh4_n), ~ as.numeric(as.charact
 ```{r}
  bisley_all <- bisley_all %>% mutate(across(c(k, no3_n, mg, ca, nh4_n), ~ .x |>as.character() |>
  str_replace_all(",", "") |> str_trim() |> na_if("") |> as.numeric()))
+```
+
+```{r}
+#originally was going to use rollmean function
+
+bisley_all$K_rm <- rollmean(bisley_all$K,9,fill=NA,align="center")
+bisley_all$NO3_rm <- rollmean(bisley_all$NO3.N,9,fill=NA,align="center")
+bisley_all$Mg_rm <- rollmean(bisley_all$Mg,9,fill=NA,align="center")
+bisley_all$Ca_rm <- rollmean(bisley_all$Ca,9,fill=NA,align="center")
+bisley_all$NH4_rm <- rollmean(bisley_all$NH4.N,9,fill=NA,align="center")
 ```
 
 ```{r}

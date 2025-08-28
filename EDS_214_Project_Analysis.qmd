@@ -2,10 +2,13 @@
 title: "EDS_214_Project_Analysis"
 format: html
 editor: visual
+echo: true
+warning: false
+message: false
 ---
 
 ---
-title: "eds214_bisley"
+title: "EDS_214_Project_Analysis"
 format: html
 editor: visual
 ---
@@ -17,20 +20,17 @@ editor: visual
 #for cleaning names
 library(janitor)
 #for data manipulation
-
-#for data manipulation
 library(tidyverse)
 library(paletteer)
 library(dplyr)
 library(lubridate)
-#for the rolling mean function
-library(zoo)
+source("scripts/") #clean function
+source("scripts/plot_fig") #plotting function
 ```
 
 #Importing the Datasets
 ```{r}
-#Need to import the data from 3 separate csv files
-
+#Need to import the data from 3 separate csv files and clean the names
 bisley_1 <- read.csv(here::here("data", 'QuebradaCuenca1-Bisley.csv'), na = c("-99999", "")) |> janitor::clean_names()
 bisley_2 <- read.csv(here::here("data","QuebradaCuenca2-Bisley.csv"), na = c("-99999", "")) |> janitor::clean_names()
 bisley_3 <- read.csv(here::here("data","QuebradaCuenca3-Bisley.csv"), na = c("-99999", "")) |> janitor::clean_names()
@@ -40,13 +40,11 @@ bisley_3 <- read.csv(here::here("data","QuebradaCuenca3-Bisley.csv"), na = c("-9
 ```{r}
 #verified the data before working on it
 colnames(bisley_1)
-colnames(bisley_2)
-colnames(bisley_3)
 ```
 
 # Cleaning the Data
 ```{r}
-#binded the rows to create one database
+#binded the rows to create one data set
 bisley_all <- bind_rows(bisley_1,bisley_2,bisley_3) %>% 
   #mutated the date column to date type. Before it was char
   mutate(sample_date = 
@@ -55,7 +53,8 @@ bisley_all <- bind_rows(bisley_1,bisley_2,bisley_3) %>%
 ```
 
 ```{r}
-#verify the sample_date format
+#verifying the sample_date format
+
 #We see that the data for some of the columns are string type. Will need  change this
 str(bisley_all)
 ```
@@ -63,55 +62,46 @@ str(bisley_all)
 ```{r}
 #Further cleaning
 
-#maybe attach this to the code chunk below
 bisley_all <- bisley_all %>%
   #mutated the columns of the nutrients we want for our data set from character to numeric
-  mutate(across(c(k, no3_n, mg, ca, nh4_n),
-                ~ as.numeric(as.character(.))))
+  mutate(across(c(k, no3_n, mg, ca, nh4_n), ~ as.numeric(as.character(.))))
 ```
 
 ```{r}
-#there are some issues in the previous code line. Saying that there are NAs included. We must ensure all entries are numeric, so we need to replace:
-# characters to numeric, any special symbols must be removed, commas, spaces, empties to NAs
+#Above there are some issues/warnings in the previous code line. Saying that there are NAs included. We must ensure all entries are numeric, so we need to: clean/replace characters to numeric, change/replace any special symbols, commas, spaces, empties
 
 #Maybe make this a function
 bisley_all <- bisley_all %>%
   mutate(across(
     c(k, no3_n, mg, ca, nh4_n),
     ~ .x |>
-      as.character() |>                         # ensure character
-      str_replace_all(",", "") |>
-      #removed commas in numbers
-      str_trim() |>                             #remove stray spaces
+      as.character() |>  # ensure character
+      str_replace_all(",", "") |>  #removed commas in numbers
+      str_trim() |>  #remove stray spaces
       na_if("") |>                        
-      as.numeric()
-      #turn empty string into NA
+      as.numeric()  #turn empty string into NA
   ))
 ```
 
 ```{r}
+
+#selecting the nutrients we want by group by
 nutrients <- bisley_all %>% 
   group_by(sample_id) %>%
   mutate(across(
-    c(k, no3_n, mg, ca, nh4_n)))
-```
-
-```{r}
-#selecting the nutrients we want
-
-nutrients <- nutrients %>% 
+    c(k, no3_n, mg, ca, nh4_n))) %>% 
   select(sample_id,sample_date,k, no3_n,mg, ca, nh4_n)
 ```
+
 ```{r}
+#verifying the new table
 nutrients
 ```
 
 
 # Functions and Mathematical Output
-
-
 ```{r}
-#Recreating the rolling average 
+#Creating the rolling average function
 
 moving_average <- function(focal_date, Sample_Date, conc, wind_size_weeks) {
   #Which dates are in the window
@@ -125,41 +115,40 @@ moving_average <- function(focal_date, Sample_Date, conc, wind_size_weeks) {
   return(result)
 }
 ```
-```{r}
-data.class(nutrients$sample_date)
-```
-
 
 ```{r}
-nutrients$calc_rolling <- sapply(
-  nutrients$sample_date,
-  moving_average,
-  Sample_Date = nutrients$sample_date,
-  conc = nutrients$ca,
-  wind_size_weeks = 9
-)
+#Calling the function given specific arguments for our 9 week rolling average, adding a column for ONLY CA
+
+
+#nutrients$calc_rolling <- sapply(
+#  nutrients$sample_date,
+ # moving_average,
+  #Sample_Date = nutrients$sample_date,
+  #conc = nutrients$ca,
+  #wind_size_weeks = 9
+#)
 ```
 
 # Create a for loop to iterate through the nutrients we want to get the rolling averages
 
-
 ```{r}
+#created a vector to iterate into a loop for filling in the cells with values that correspond to the nutrient
 nutrient_names <- c("ca","k","mg","no3_n", "nh4_n")
 
+#a for loop to interate through the vector and add the 9 week rolling average into the cells based on nutrient and create column and fill the value in
 for (nutr in nutrient_names) {
   new_col <- paste0(nutr, "_rollmean9")
+  
   nutrients[[new_col]] <- sapply(
     nutrients$sample_date,
     moving_average,
+    
     Sample_Date = nutrients$sample_date,
     conc = nutrients[[nutr]],
     wind_size_weeks = 9
   )
 }
-
-
 ```
-
 
 ```{r}
 
@@ -188,6 +177,8 @@ for (nutr in nutrient_names) {
 
 
 ```{r}
+
+
 nutrients_long <- nutrients %>% 
   select(sample_id, 
         sample_date,
@@ -243,7 +234,7 @@ unique(nutrients_long$sample_id)
 #declare what date was the day of the hurricane to create a vertical dotted line for the graph
 hurricane_date <- as.Date("1989-09-18")
 
-ggplot(nutrients_long, aes(x = sample_date, y = value, color = sample_id, group =  sample_id)) +
+bisley_fig <- ggplot(nutrients_long, aes(x = sample_date, y = value, color = sample_id, group =  sample_id)) +
   geom_line(linewidth = .6) +
   geom_vline(
     xintercept = as.numeric(hurricane_date),
@@ -273,5 +264,7 @@ ggplot(nutrients_long, aes(x = sample_date, y = value, color = sample_id, group 
     date_labels = "%Y",
     expand = c(0,0)
   )
+
+bisley_fig
 ```
 
