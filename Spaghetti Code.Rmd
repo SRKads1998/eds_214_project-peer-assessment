@@ -11,6 +11,7 @@ library(tidyr)
 library(tidyverse)
 library(paletteer)
 library(dplyr)
+library(here)
 library(zoo)
 ```
 
@@ -39,6 +40,21 @@ bisley_all %>% mutate(across(c(k, no3_n, mg, ca, nh4_n), ~ as.numeric(as.charact
  str_replace_all(",", "") |> str_trim() |> na_if("") |> as.numeric()))
 ```
 
+```{r}
+# 9 Month Moving Average
+moving_average <- function(focal_date, Sample_Date, conc, wind_size_weeks) {
+  #Which dates are in the window
+  is_in_window <- (dates > focal_date - (wind_size_weeks / 2) * 7) &
+    (dates < focal_date + (wind_size_weeks / 2) * 7)
+  #find the associated concentrations
+  window_conc <- conc[is_in_window]
+  #calculate the mean
+  result <- mean(window_conc)
+  
+  return(result)
+}
+
+```
 
 ```{r}
 #Finding rolling average for ca
@@ -50,5 +66,16 @@ ca_ma_once <- moving_average(focal_date = as.Date("1986-05-20"),
                              wind_size_weeks = 9)
 ```
 
+
+```{r}
+#Vverifying the solution
+tiny_problem$Sample_date <- as.date(tiny_problem$sample_date)
+
+ca_ma_once <- moving_average(focal_date = as.Date("2001-12-04"),
+                             dates = tiny_problem$sample_date,
+                             conc = tiny_problem$ca,
+                             wind_size_weeks = 9)
+
+```
 
 

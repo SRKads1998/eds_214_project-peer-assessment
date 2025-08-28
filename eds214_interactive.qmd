@@ -5,6 +5,7 @@ editor: visual
 ---
 
 #Importing Libraries
+
 ```{r}
 #importing anticipated libraries that may be needed for the analysis and replication
 
@@ -22,6 +23,7 @@ library(zoo)
 ```
 
 #Importing the Datasets
+
 ```{r}
 #Need to import the data from 3 separate csv files
 
@@ -39,6 +41,7 @@ colnames(bisley_3)
 ```
 
 # Cleaning the Data
+
 ```{r}
 #binded the rows to create one database
 bisley_all <- bind_rows(bisley_1,bisley_2,bisley_3) %>% 
@@ -103,7 +106,6 @@ nutrients
 
 # Functions and Mathematical Output
 
-
 ```{r}
 #Recreating the rolling average 
 
@@ -158,18 +160,31 @@ for (nutr in nutrient_names) {
 ```{r}
 
 #Data is now clean, we need to now create a groupby only of our cleaned nutrients that were interested in
+<<<<<<< HEAD
 #nutrients <- bisley_all %>% 
 #  group_by(sample_id) %>%
 #  mutate(across(
 #    c(k, no3_n, mg, ca, nh4_n)))
     #,
+=======
+nutrients <- bisley_all %>% 
+  group_by(sample_id) %>%
+  mutate(across(
+    c(k, no3_n, mg, ca, nh4_n)))
+ #   ,
+>>>>>>> 51d324bb5a2600047c36a6e15d92694d8d8e0247
     #introducing the rollmean function that will section our years into 9 sections for the means
     
 #Creating the rolling Mean
     
 #    ~ rollmean(., k = 9, fill = NA, align = "right"),
+<<<<<<< HEAD
 #    .names = "{.col}_rollmean9"
 #  )) %>%
+=======
+ #   .names = "{.col}_rollmean9"
+  #)) %>%
+>>>>>>> 51d324bb5a2600047c36a6e15d92694d8d8e0247
 #  ungroup()
 ```
 
@@ -179,7 +194,6 @@ for (nutr in nutrient_names) {
 #  summarise(across(c(k, no3_n, mg, ca, nh4_n),
 #                   ~ sum(!is.na(.)), .names = "n_nonNA_{.col}"))
 ```
-
 
 ```{r}
 nutrients_long <- nutrients %>% 
@@ -232,7 +246,6 @@ unique(nutrients_long$sample_id)
 
 ```
 
-
 ```{r}
 #declare what date was the day of the hurricane to create a vertical dotted line for the graph
 hurricane_date <- as.Date("1989-09-18")
@@ -268,4 +281,3 @@ ggplot(nutrients_long, aes(x = sample_date, y = value, color = sample_id, group 
     expand = c(0,0)
   )
 ```
-
