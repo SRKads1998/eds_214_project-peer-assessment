@@ -5,6 +5,7 @@ editor: visual
 ---
 
 #Importing Libraries
+
 ```{r}
 #importing anticipated libraries that may be needed for the analysis and replication
 
@@ -22,6 +23,7 @@ library(zoo)
 ```
 
 #Importing the Datasets
+
 ```{r}
 #Need to import the data from 3 separate csv files
 
@@ -39,6 +41,7 @@ colnames(bisley_3)
 ```
 
 # Cleaning the Data
+
 ```{r}
 #binded the rows to create one database
 bisley_all <- bind_rows(bisley_1,bisley_2,bisley_3) %>% 
@@ -63,6 +66,7 @@ bisley_all <- bisley_all %>%
   mutate(across(c(k, no3_n, mg, ca, nh4_n),
                 ~ as.numeric(as.character(.))))
 ```
+
 ```{r}
 #there are some issues in the previous code line. Saying that there are NAs included. We must ensure all entries are numeric, so we need to replace:
 # characters to numeric, any special symbols must be removed, commas, spaces, empties to NAs
@@ -83,7 +87,6 @@ bisley_all <- bisley_all %>%
 ```
 
 # Functions and Mathematical Output
-
 
 ```{r}
 #Recreating the rolling average 
@@ -107,17 +110,18 @@ moving_average <- function(focal_date, Sample_Date, conc, wind_size_weeks) {
 nutrients <- bisley_all %>% 
   group_by(sample_id) %>%
   mutate(across(
-    c(k, no3_n, mg, ca, nh4_n),
+    c(k, no3_n, mg, ca, nh4_n)))
+ #   ,
     #introducing the rollmean function that will section our years into 9 sections for the means
     
     #want to further investigate this
     
 #Creating the rolling Mean
     
-    ~ rollmean(., k = 9, fill = NA, align = "right"),
-    .names = "{.col}_rollmean9"
-  )) %>%
-  ungroup()
+#    ~ rollmean(., k = 9, fill = NA, align = "right"),
+ #   .names = "{.col}_rollmean9"
+  #)) %>%
+#  ungroup()
 ```
 
 ```{r}
@@ -126,7 +130,6 @@ bisley_all %>%
   summarise(across(c(k, no3_n, mg, ca, nh4_n),
                    ~ sum(!is.na(.)), .names = "n_nonNA_{.col}"))
 ```
-
 
 ```{r}
 bisley_long <- nutrients %>% 
@@ -161,7 +164,6 @@ bisley_long <- nutrients %>%
 #%>% 
   #filter(year >= 1988, year <= 1994, !is.na(value))
 ```
-
 
 ```{r}
 #declare what date was the day of the hurricane to create a vertical dotted line for the graph
@@ -199,4 +201,3 @@ ggplot(bisley_long, aes(x = sample_date, y = value, color = sample_id)) +
     color = "Stream"
   )
 ```
-
