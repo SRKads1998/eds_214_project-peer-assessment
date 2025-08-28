@@ -13,7 +13,8 @@ format: html
 editor: visual
 ---
 
-#Importing Libraries
+#Importing Libraries/Data
+
 ```{r}
 #importing anticipated libraries that may be needed for the analysis and replication
 
@@ -24,11 +25,10 @@ library(tidyverse)
 library(paletteer)
 library(dplyr)
 library(lubridate)
-source("scripts/") #clean function
-source("scripts/plot_fig") #plotting function
+#source("scripts/") #clean function
+#source("scripts/plot_fig") #plotting function
 ```
 
-#Importing the Datasets
 ```{r}
 #Need to import the data from 3 separate csv files and clean the names
 bisley_1 <- read.csv(here::here("data", 'QuebradaCuenca1-Bisley.csv'), na = c("-99999", "")) |> janitor::clean_names()
@@ -43,6 +43,7 @@ colnames(bisley_1)
 ```
 
 # Cleaning the Data
+
 ```{r}
 #binded the rows to create one data set
 bisley_all <- bind_rows(bisley_1,bisley_2,bisley_3) %>% 
@@ -98,8 +99,8 @@ nutrients <- bisley_all %>%
 nutrients
 ```
 
-
 # Functions and Mathematical Output
+
 ```{r}
 #Creating the rolling average function
 
@@ -110,7 +111,8 @@ moving_average <- function(focal_date, Sample_Date, conc, wind_size_weeks) {
   #find the associated concentrations
   window_conc <- conc[is_in_window]
   #calculate the mean
-  result <- mean(window_conc, na.rm = TRUE)
+  #needs to determine if i will remove the NAs
+  result <- mean(window_conc, na.rm = FALSE) #<<<<<<<<<<-----------------------------------
   
   return(result)
 }
@@ -133,16 +135,17 @@ moving_average <- function(focal_date, Sample_Date, conc, wind_size_weeks) {
 
 ```{r}
 #created a vector to iterate into a loop for filling in the cells with values that correspond to the nutrient
-nutrient_names <- c("ca","k","mg","no3_n", "nh4_n")
+nutrient_names <- c("ca","k","mg","no3_n","nh4_n")
 
-#a for loop to interate through the vector and add the 9 week rolling average into the cells based on nutrient and create column and fill the value in
+#a for loop to iterate through the vector and add the 9 week rolling average into the cells based on nutrient and create column and fill the value in
 for (nutr in nutrient_names) {
   new_col <- paste0(nutr, "_rollmean9")
-  
-  nutrients[[new_col]] <- sapply(
+# in the new column, use sapply() based on the sample date and moving average
+ nutrients[[new_col]] <- sapply(
     nutrients$sample_date,
     moving_average,
     
+# 
     Sample_Date = nutrients$sample_date,
     conc = nutrients[[nutr]],
     wind_size_weeks = 9

@@ -18,32 +18,25 @@ library(zoo)
 ```{r}
 # import data sets 
 
-data_1 <- read.csv(here('data','QuebradaCuenca1-Bisley.csv'))
-data_2 <- read.csv(here('data','QuebradaCuenca2-Bisley.csv'))
-data_3 <-read.csv(here('data','QuebradaCuenca3-Bisley.csv'))
+data_1 <- read.csv(here('data','QuebradaCuenca1-Bisley.csv')) |> janitor::clean_names()
+data_2 <- read.csv(here('data','QuebradaCuenca2-Bisley.csv')) |> janitor::clean_names()
+data_3 <-read.csv(here('data','QuebradaCuenca3-Bisley.csv')) |> janitor::clean_names()
 
 bisley_all <- bind_rows(data_1,data_2,data_3)
 
 ```
 
 ```{r}
-bisley_all <- bisley_all %>% mutate(Sample_Date = as.Date(Sample_Date)) %>% arrange(Sample_ID, Sample_Date)
+bisley_all <- bisley_all %>% mutate(sample_date = as.Date(sample_date)) %>% arrange(sample_id, sample_date)
 ```
-```{r}
-bisley_all <- tolower(colnames(bisley_all))
-```
+
 ```{r}
 bisley_all
 ```
 
 ```{r}
 # Create a function where it includes a function where it will compute rolling means based on the column name or nutrient name
-bisley_all %>% mutate(across(c(k, no3_n, mg, ca, nh4_n), ~ as.numeric(as.character(.))))
 
-```
-```{r}
- bisley_all <- bisley_all %>% mutate(across(c(k, no3_n, mg, ca, nh4_n), ~ .x |>as.character() |>
- str_replace_all(",", "") |> str_trim() |> na_if("") |> as.numeric()))
 ```
 
 ```{r}
@@ -55,6 +48,13 @@ bisley_all$Mg_rm <- rollmean(bisley_all$Mg,9,fill=NA,align="center")
 bisley_all$Ca_rm <- rollmean(bisley_all$Ca,9,fill=NA,align="center")
 bisley_all$NH4_rm <- rollmean(bisley_all$NH4.N,9,fill=NA,align="center")
 ```
+
+```{r}
+bisley_long <- pivot_longer(bisley_all, cols = ends_with("_rm"),
+          names_to = "nutrient", values_to = "value") %>%
+  filter(!is.na(value))
+```
+
 
 ```{r}
 # 9 Month Moving Average
@@ -84,7 +84,7 @@ ca_ma_once <- moving_average(focal_date = as.Date("1986-05-20"),
 
 
 ```{r}
-#Vverifying the solution
+#Verifying the solution
 tiny_problem$Sample_date <- as.date(tiny_problem$sample_date)
 
 ca_ma_once <- moving_average(focal_date = as.Date("2001-12-04"),
