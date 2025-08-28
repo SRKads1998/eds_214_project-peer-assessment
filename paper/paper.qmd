@@ -1,8 +1,6 @@
 ---
 title: "paper"
 format: html
-project: 
-  output-dir: ../docs
 ---
 
 # Background
@@ -35,6 +33,7 @@ bisley_3 <- read.csv(here::here("data","QuebradaCuenca3-Bisley.csv"), na = c("-9
 # Methods
 
 ```{r}
+
 #verified the data before working on it
 colnames(bisley_1)
 ```
@@ -76,35 +75,58 @@ bisley_all <- bisley_all %>%
   ))
 ```
 
-```{r}
-bisley_all$K_rm <- rollmean(bisley_all$K,9,fill=NA,align="center")
-bisley_all$NO3_rm <- rollmean(bisley_all$NO3.N,9,fill=NA,align="center")
-bisley_all$Mg_rm <- rollmean(bisley_all$Mg,9,fill=NA,align="center")
-bisley_all$Ca_rm <- rollmean(bisley_all$Ca,9,fill=NA,align="center")
-bisley_all$NH4_rm <- rollmean(bisley_all$NH4.N,9,fill=NA,align="center")
-```
 
 ```{r}
-bisley_long <- pivot_longer(bisley_all, cols = ends_with("_rm"),
-          names_to = "nutrient", values_to = "value") %>%
-  filter(!is.na(value))
+#bisley_long <- pivot_longer(bisley_all, cols = ends_with("_rm"),
+ #         names_to = "nutrient", values_to = "value") %>%
+  #filter(!is.na(value))
 ```
 
 ```{r}
 
-#Above there are some issues/warnings in the previous code line. Saying that there are NAs included. We must ensure all entries are numeric, so we need to: clean/replace characters to numeric, change/replace any special symbols, commas, spaces, empties
-
-#Maybe make this a function
-bisley_all <- bisley_all %>%
+#selecting the nutrients we want by group by
+nutrients <- bisley_all %>% 
+  group_by(sample_id) %>%
   mutate(across(
-    c(k, no3_n, mg, ca, nh4_n),
-    ~ .x |>
-      as.character() |>  # ensure character
-      str_replace_all(",", "") |>  #removed commas in numbers
-      str_trim() |>  #remove stray spaces
-      na_if("") |>                        
-      as.numeric()  #turn empty string into NA
-  ))
+    c(k, no3_n, mg, ca, nh4_n))) %>% 
+  select(sample_id,sample_date,k, no3_n,mg, ca, nh4_n)
+```
+
+```{r}
+#Creating the rolling average function
+
+moving_average <- function(focal_date, Sample_Date, conc, wind_size_weeks) {
+  #Which dates are in the window
+  is_in_window <- (Sample_Date > focal_date - (wind_size_weeks / 2) * 7) &
+    (Sample_Date < focal_date + (wind_size_weeks / 2) * 7)
+  #find the associated concentrations
+  window_conc <- conc[is_in_window]
+  #calculate the mean
+  #needs to determine if i will remove the NAs
+  result <- mean(window_conc, na.rm = FALSE) #<<<<<<<<<<-----------------------------------
+  
+  return(result)
+}
+```
+
+```{r}
+#created a vector to iterate into a loop for filling in the cells with values that correspond to the nutrient
+nutrient_names <- c("ca","k","mg","no3_n","nh4_n")
+
+#a for loop to iterate through the vector and add the 9 week rolling average into the cells based on nutrient and create column and fill the value in
+for (nutr in nutrient_names) {
+  new_col <- paste0(nutr, "_rollmean9")
+# in the new column, use sapply() based on the sample date and moving average
+ nutrients[[new_col]] <- sapply(
+    nutrients$sample_date,
+    moving_average,
+    
+# 
+    Sample_Date = nutrients$sample_date,
+    conc = nutrients[[nutr]],
+    wind_size_weeks = 9
+  )
+}
 ```
 
 
