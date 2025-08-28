@@ -11,6 +11,7 @@ library(tidyr)
 library(tidyverse)
 library(paletteer)
 library(dplyr)
+library(here)
 library(zoo)
 ```
 
@@ -55,5 +56,16 @@ moving_average <- function(focal_date, Sample_Date, conc, wind_size_weeks) {
 
 ```
 
+
+```{r}
+#Vverifying the solution
+tiny_problem$Sample_date <- as.date(tiny_problem$sample_date)
+
+ca_ma_once <- moving_average(focal_date = as.Date("2001-12-04"),
+                             dates = tiny_problem$sample_date,
+                             conc = tiny_problem$ca,
+                             wind_size_weeks = 9)
+
+```
 
 
