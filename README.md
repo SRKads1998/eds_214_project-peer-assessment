@@ -10,6 +10,8 @@ This repository is for the EDS 214 project which its primary focus is to recreat
 
 <img src="https://github.com/user-attachments/assets/ea634bda-fc23-4263-8b63-ce28e4c3ce61" alt="image" width="700" height="1000"/>
 
+
+
 # Description
 
 The project will consist of folders: 
